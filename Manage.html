@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Advisor Pro - Investment Calc</title>
+    <style>
+        :root { --blue: #004085; --green: #218838; --bg: #f8f9fa; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); padding: 10px; margin: 0; }
+        .app-card { background: white; max-width: 500px; margin: auto; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; }
+        .header { background: var(--blue); color: white; padding: 15px; text-align: center; }
+        .content { padding: 15px; }
+        .section { margin-bottom: 12px; }
+        label { display: block; font-size: 13px; font-weight: bold; color: #333; margin-bottom: 5px; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 10px; font-size: 15px; box-sizing: border-box; outline: none; }
+        .row { display: flex; gap: 10px; }
+        .row > div { flex: 1; }
+        .calc-box { background: #e9ecef; padding: 15px; border-radius: 12px; margin: 15px 0; display: flex; flex-wrap: wrap; justify-content: space-around; text-align: center; gap: 10px; }
+        .calc-item { min-width: 100px; }
+        .calc-val { font-weight: bold; color: var(--blue); font-size: 18px; }
+        .preview { background: #fffde7; padding: 15px; border-radius: 10px; font-size: 13px; white-space: pre-wrap; border: 1px dashed #999; color: #000; }
+        .btn { background: var(--green); color: white; border: none; width: 100%; padding: 16px; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .lot-info { font-size: 11px; color: #004085; margin-top: 4px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="app-card">
+    <div class="header">
+        <h3 style="margin:0;">STOCK ADVISOR PANEL</h3>
+    </div>
+
+    <div class="content">
+        <div class="row">
+            <div class="section">
+                <label>Stock/Index Name</label>
+                <input type="text" id="stock" list="indexList" placeholder="Select Index" oninput="update()" autocomplete="off">
+                <datalist id="indexList">
+                    <option value="NIFTY 50">
+                    <option value="BANK NIFTY">
+                    <option value="FIN NIFTY">
+                    <option value="MIDCAP NIFTY">
+                    <option value="NIFTY NEXT 50">
+                    <option value="BSE SENSEX">
+                    <option value="BSE BANKEX">
+                </datalist>
+                <div id="lotDisplay" class="lot-info">Mode: Cash</div>
+            </div>
+            <div class="section">
+                <label>Segment</label>
+                <select id="segment" onchange="update()">
+                    <option value="CASH">CASH</option>
+                    <option value="FUTURE">FUTURE</option>
+                    <option value="OPTION">OPTION</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="row" id="optionRow" style="display:none;">
+            <div class="section">
+                <label>Strike Price</label>
+                <input type="number" id="strike" placeholder="24500" oninput="update()">
+            </div>
+            <div class="section">
+                <label>Type</label>
+                <select id="optType" onchange="update()">
+                    <option value="CE">CE</option>
+                    <option value="PE">PE</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="section">
+                <label id="qtyLabel">Qty (Shares)</label>
+                <input type="number" id="qty" value="1" oninput="update()">
+            </div>
+            <div class="section">
+                <label>Action</label>
+                <select id="action" onchange="update()">
+                    <option value="BUY">BUY</option>
+                    <option value="SELL">SELL</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="section">
+                <label>Entry Price</label>
+                <input type="number" id="entry" placeholder="0.00" oninput="update()">
+            </div>
+            <div class="section">
+                <label>Stop Loss (SL)</label>
+                <input type="number" id="sl" placeholder="0.00" oninput="update()">
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="section">
+                <label>Target 1</label>
+                <input type="number" id="tg1" placeholder="0.00" oninput="update()">
+            </div>
+            <div class="section">
+                <label>Target 2</label>
+                <input type="number" id="tg2" placeholder="0.00" oninput="update()">
+            </div>
+        </div>
+
+        <div class="calc-box">
+            <div class="calc-item"><div class="calc-val" id="totalInvest">Rs 0</div><small>Investment</small></div>
+            <div class="calc-item"><div class="calc-val" id="totalProfit">0</div><small>Profit (T2)</small></div>
+            <div class="calc-item"><div class="calc-val" id="rr">1:0</div><small>R:R Ratio</small></div>
+        </div>
+
+        <div class="preview" id="previewBox">Preview will appear here...</div>
+
+        <button class="btn" onclick="sendWA()">SHARE ON WHATSAPP</button>
+    </div>
+</div>
+
+<script>
+    function update() {
+        let stock = document.getElementById('stock').value.toUpperCase();
+        const seg = document.getElementById('segment').value;
+        const strike = document.getElementById('strike').value;
+        const action = document.getElementById('action').value;
+        const entry = parseFloat(document.getElementById('entry').value) || 0;
+        const tg1 = parseFloat(document.getElementById('tg1').value) || 0;
+        const tg2 = parseFloat(document.getElementById('tg2').value) || 0;
+        const sl = parseFloat(document.getElementById('sl').value) || 0;
+        const optType = (seg === "OPTION") ? document.getElementById('optType').value : "";
+        let qtyInput = parseFloat(document.getElementById('qty').value) || 0;
+
+        let mult = 1;
+        if (seg !== "CASH") {
+            if (stock.includes("NIFTY 50") || stock === "NIFTY") mult = 65;
+            else if (stock.includes("BANK NIFTY") || stock.includes("BANKNIFTY")) mult = 30;
+            else if (stock.includes("FIN NIFTY") || stock.includes("FINNIFTY")) mult = 60;
+            else if (stock.includes("MIDCAP")) mult = 120;
+            else if (stock.includes("NEXT 50")) mult = 25;
+            else if (stock.includes("SENSEX")) mult = 20;
+            else if (stock.includes("BANKEX")) mult = 30;
+        }
+
+        if (seg === "OPTION") {
+            document.getElementById('optionRow').style.display = "flex";
+            document.getElementById('qtyLabel').innerText = "Lot Size";
+            document.getElementById('lotDisplay').innerText = "Lot: " + mult;
+        } else if (seg === "FUTURE") {
+            document.getElementById('optionRow').style.display = "none";
+            document.getElementById('qtyLabel').innerText = "Lot Size";
+            document.getElementById('lotDisplay').innerText = "Lot: " + mult;
+        } else {
+            document.getElementById('optionRow').style.display = "none";
+            document.getElementById('qtyLabel').innerText = "Qty (Shares)";
+            document.getElementById('lotDisplay').innerText = "Mode: Cash";
+            mult = 1;
+        }
+
+        const tShares = qtyInput * mult;
+        
+        // Investment Calculation (Entry Price * Total Shares)
+        let investAmt = (entry * tShares).toFixed(2);
+        
+        let pts = (tg2 > 0) ? (tg2 - entry) : (tg1 - entry);
+        if (action === "SELL") pts = (entry - tg2 > 0) ? (entry - tg2) : (entry - tg1);
+        
+        let risk = Math.abs(entry - sl);
+        let tProf = (pts * tShares).toFixed(2);
+        let rrR = (risk > 0) ? (pts / risk).toFixed(1) : 0;
+
+        document.getElementById('totalInvest').innerText = "Rs " + investAmt;
+        document.getElementById('totalProfit').innerText = tProf;
+        document.getElementById('rr').innerText = `1 : ${rrR}`;
+
+        let msg = `*STOCK CALL: ${stock}*\n\n`;
+        if (seg === "OPTION") {
+            msg += `> Instrument: ${stock} ${strike} ${optType}\n`;
+        } else {
+            msg += `> Segment: ${seg}\n`;
+        }
+        msg += `> Action: ${action}\n`;
+        msg += `> ${seg === "CASH" ? "Qty" : "Lots"}: ${qtyInput} (${tShares} Shares)\n\n`;
+        msg += `*Price Details:*\n`;
+        msg += `- Entry: Rs ${entry}\n`;
+        msg += `- Target 1: Rs ${tg1}\n`;
+        msg += `- Target 2: Rs ${tg2}\n`;
+        msg += `- Stop Loss: Rs ${sl}\n\n`;
+        msg += `*Analysis:*\n`;
+        msg += `- Invested: Rs ${investAmt}\n`;
+        msg += `- Profit Pot.: Rs ${tProf}\n`;
+        msg += `- Risk/Reward: 1:${rrR}\n\n`;
+        msg += `_Disclaimer: Education Purpose Only!_`;
+
+        document.getElementById('previewBox').innerText = msg;
+        return msg;
+    }
+
+    function sendWA() {
+        const msg = encodeURIComponent(update());
+        window.open(`https://wa.me/?text=${msg}`, '_blank');
+    }
+</script>
+
+</body>
+</html>
